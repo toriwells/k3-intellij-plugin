@@ -12,7 +12,6 @@ import com.appian.intellij.k3.psi.KLambda;
 import com.appian.intellij.k3.psi.KUserId;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.structureView.StructureViewTreeElement;
-import com.intellij.ide.structureView.impl.java.AccessLevelProvider;
 import com.intellij.ide.util.treeView.smartTree.SortableTreeElement;
 import com.intellij.ide.util.treeView.smartTree.TreeElement;
 import com.intellij.navigation.ColoredItemPresentation;
@@ -25,7 +24,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiNamedElement;
 
 final class KStructureViewElement
-    implements StructureViewTreeElement, SortableTreeElement, AccessLevelProvider {
+    implements StructureViewTreeElement, SortableTreeElement {
 
   private PsiElement element;
 
@@ -88,13 +87,7 @@ final class KStructureViewElement
     return element instanceof NavigationItem && ((NavigationItem)element).canNavigateToSource();
   }
 
-  @Override
   public int getAccessLevel() {
-    return 0;
-  }
-
-  @Override
-  public int getSubLevel() {
     return 0;
   }
 

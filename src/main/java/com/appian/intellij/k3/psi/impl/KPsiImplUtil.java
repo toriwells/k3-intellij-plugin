@@ -70,9 +70,8 @@ public final class KPsiImplUtil {
       return true;
     }
     if (parent instanceof KAssignment) {
-      return !((KAssignment)parent).isCompound();
+      return ((KAssignment) parent).getArgs() == null;
     }
     return false;
   }
-
 }

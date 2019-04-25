@@ -18,7 +18,7 @@ import com.intellij.openapi.vfs.VirtualFileEvent;
 /**
  * Caches K functions information per file.
  */
-final class KUserIdCache extends VirtualFileAdapter {
+public final class KUserIdCache extends VirtualFileAdapter {
 
   static final Key<String[]> USER_IDS = Key.create("userIds");
   static final Key<Trie<Boolean>> USER_IDS_TRIE = Key.create("userIdsTrie");

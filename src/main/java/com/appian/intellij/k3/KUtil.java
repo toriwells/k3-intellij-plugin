@@ -22,8 +22,8 @@ import com.appian.intellij.k3.psi.KFile;
 import com.appian.intellij.k3.psi.KLambda;
 import com.appian.intellij.k3.psi.KLambdaParams;
 import com.appian.intellij.k3.psi.KModeDirective;
+import com.appian.intellij.k3.psi.KNamedElement;
 import com.appian.intellij.k3.psi.KNamespaceDeclaration;
-import com.appian.intellij.k3.psi.KTypes;
 import com.appian.intellij.k3.psi.KUserId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -182,7 +182,7 @@ public final class KUtil {
     }).orElse(fqnOrName);
   }
 
-  static Optional<KLambda> getFunctionDefinition(@NotNull KUserId element) {
+  public static Optional<KLambda> getFunctionDefinition(@NotNull KNamedElement element) {
     final KExpression expression = PsiTreeUtil.getNextSiblingOfType(element, KExpression.class);
     if (expression != null && expression.getFirstChild() instanceof KLambda) {
       return Optional.of((KLambda)expression.getFirstChild());
