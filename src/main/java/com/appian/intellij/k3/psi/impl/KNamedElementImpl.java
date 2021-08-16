@@ -14,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 
 public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements KNamedElement {
-  KNamedElementImpl(ASTNode node) {
+  public KNamedElementImpl(ASTNode node) {
     super(node);
   }
 
@@ -24,12 +24,14 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
   }
 
   public PsiElement setName(@NotNull String newName) {
-    final ASTNode keyNode = getNode().getFirstChildNode();
-    KUserId property = KElementFactory.createProperty(getProject(), newName);
-    ASTNode newKeyNode = property.getFirstChild().getNode();
-    getNode().replaceChild(keyNode, newKeyNode);
-    KUtil.putFqn(this, null); // clear so it's recalculated next time
-    KUserIdCache.getInstance().remove(this); // clear file cache to reflect changes immediately
+    Optional.ofNullable(KElementFactory.createKUserId(getProject(), newName))
+        .map(KUserId::getFirstChild)
+        .map(PsiElement::getNode)
+        .ifPresent(newKeyNode -> {
+          final ASTNode keyNode = getNode().getFirstChildNode();
+          getNode().replaceChild(keyNode, newKeyNode);
+          KUserIdCache.getInstance().remove(this); // clear file cache to reflect changes immediately
+        });
     return this;
   }
 
@@ -42,7 +44,7 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
       @NotNull
       @Override
       public String getPresentableText() {
-        return KUtil.getFqnOrName(KNamedElementImpl.this);
+        return getDetails().getFqn();
       }
 
       @NotNull
@@ -83,3 +85,4 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
     return name.startsWith("i.") || name.contains(".i.");
   }
 }
+

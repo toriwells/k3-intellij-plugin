@@ -37,147 +37,96 @@ import com.intellij.psi.util.PsiTreeUtil;
 
 public final class KUtil {
 
+  private static final Key<String> FQN = Key.create("fqn");
+
   public static Collection<KUserId> findProjectIdentifiers(Project project) {
     final Collection<VirtualFile> virtualFiles = FileTypeIndex.getFiles(KFileType.INSTANCE,
         GlobalSearchScope.allScope(project));
     final Stream<KUserId> stream = virtualFiles.stream()
-        .flatMap(file -> findGlobalDeclarations(project, file, new AnyMatcher(), false).stream());
-    return stream.collect(Collectors.toList());
+        .flatMap(file -> findIdentifiers(project, file, AnyMatcher, false).stream());
+    List<KUserId> fnNames = stream.collect(Collectors.toList());
+    return fnNames;
   }
 
-  public static Collection<KUserId> findGlobalDeclarations(Project project, VirtualFile file) {
-    return findGlobalDeclarations(project, file, new AnyMatcher(), false);
+  public static Collection<KUserId> findIdentifiers(Project project, VirtualFile file) {
+    return findIdentifiers(project, file, AnyMatcher, false);
   }
 
   @Nullable
   public static KUserId findFirstExactMatch(Project project, VirtualFile file, String targetIdentifier) {
-    final Iterator<KUserId> it = findGlobalDeclarations(project, file, new ExactGlobalAssignmentMatcher(targetIdentifier), true).iterator();
+    final Iterator<KUserId> it = findIdentifiers(project, file, new ExactMatcher(targetIdentifier), true).iterator();
     return it.hasNext() ? it.next() : null;
   }
 
-  @SafeVarargs
-  public static <T> Optional<T> first(Supplier<Optional<T>>... suppliers) {
-    return Arrays.stream(suppliers)
-        .map(Supplier::get)
-        .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
-        .findFirst();
-  }
-
   interface Matcher {
-    boolean matches(KUserId found);
-    default String getTarget() {
-      return null;
-    }
-    default boolean skipCacheCheck() { return false; };
-    Matcher withSkipCacheCheck();
+    boolean matches(String found);
   }
-
-  static class PrefixGlobalAssignmentMatcher implements Matcher {
+  static class PrefixMatcher implements Matcher {
     private final String target;
-    private final boolean skipCacheCheck;
-    public PrefixGlobalAssignmentMatcher(String target) {
-      this(target, false);
-    }
-    public PrefixGlobalAssignmentMatcher(String target, boolean skipCacheCheck) {
+    public PrefixMatcher(String target) {
       this.target = target;
-      this.skipCacheCheck = skipCacheCheck;
     }
     @Override
-    public boolean matches(KUserId found) {
-      if (found.getParent() instanceof KAssignment) {
-        KNamedElement.Info foundInfo = found.getDetails();
-        return foundInfo.isGlobalAssignment() && foundInfo.getFqn().startsWith(target);
-      }
-      return false;
-    }
-    @Override
-    public String getTarget() {
-      return target;
-    }
-    @Override
-    public boolean skipCacheCheck() {
-      return skipCacheCheck;
-    }
-    @Override
-    public PrefixGlobalAssignmentMatcher withSkipCacheCheck() {
-      return new PrefixGlobalAssignmentMatcher(target, true);
+    public boolean matches(String found) {
+      return found.startsWith(target);
     }
   }
 
-  static class ExactGlobalAssignmentMatcher implements Matcher {
+  static class ExactMatcher implements Matcher {
     private final String target;
-    private final boolean skipCacheCheck;
-    public ExactGlobalAssignmentMatcher(String target) {
-      this(target, false);
-    }
-    public ExactGlobalAssignmentMatcher(String target, boolean skipCacheCheck) {
+    public ExactMatcher(String target) {
       this.target = target;
-      this.skipCacheCheck = skipCacheCheck;
     }
     @Override
-    public boolean matches(KUserId found) {
-      if (found.getParent() instanceof KAssignment) {
-        KNamedElement.Info foundInfo = found.getDetails();
-        return foundInfo.isGlobalAssignment() && target.equals(foundInfo.getFqn());
-      }
-      return false;
-    }
-    @Override
-    public String getTarget() {
-      return target;
-    }
-    @Override
-    public boolean skipCacheCheck() {
-      return skipCacheCheck;
-    }
-    @Override
-    public ExactGlobalAssignmentMatcher withSkipCacheCheck() {
-      return new ExactGlobalAssignmentMatcher(target, true);
-    }
-  }
-  static class AnyMatcher implements Matcher {
-    private final boolean skipCacheCheck;
-    AnyMatcher() {
-      this(false);
-    }
-    AnyMatcher(boolean skipCacheCheck) {
-      this.skipCacheCheck = skipCacheCheck;
-    }
-    @Override
-    public boolean matches(KUserId found) {
-      if (found.getParent() instanceof KAssignment) {
-        KNamedElement.Info foundInfo = found.getDetails();
-        return foundInfo.isGlobalAssignment();
-      }
-      return false;
-    }
-    @Override
-    public boolean skipCacheCheck() {
-      return skipCacheCheck;
-    }
-    @Override
-    public Matcher withSkipCacheCheck() {
-      return new AnyMatcher(true);
+    public boolean matches(String found) {
+      return target.equals(found);
     }
   }
 
-  @NotNull
-  static Collection<KUserId> findGlobalDeclarations(
-      Project project, VirtualFile file, Matcher matcher, boolean stopAfterFirstMatch) {
+  static Matcher AnyMatcher = (found) -> true;
+
+    @NotNull
+  static Collection<KUserId> findIdentifiers(
+        Project project, VirtualFile file, Matcher matcher, boolean stopAfterFirstMatch) {
     final KFile kFile = (KFile)PsiManager.getInstance(project).findFile(file);
     if (kFile == null) {
-      return Collections.emptySet();
+      return Collections.emptyList();
     }
-    final Set<KUserId> results = new LinkedHashSet<>(stopAfterFirstMatch ? 1 : 16);
-    Collection<KUserId> ids = PsiTreeUtil.findChildrenOfType(kFile, KUserId.class);
-    for (KUserId found : ids) {
-      if (matcher.matches(found)) {
-        results.add(found);
-        if (stopAfterFirstMatch) {
-          return results;
+    String currentNamespace = ""; // default namespace
+    PsiElement topLevelElement = kFile.getFirstChild();
+    final Collection<KUserId> results = new ArrayList<>(0);
+    if (topLevelElement == null) {
+      return results;
+    }
+    do {
+      if (topLevelElement instanceof KNamespaceDeclaration) {
+        final String newNamespace = ((KNamespaceDeclaration)topLevelElement).getUserId().getText();
+        currentNamespace = getNewNamespace(currentNamespace, newNamespace);
+      } else {
+        // there are multiple ids if they are chained i.e. x:y:z:1
+        for (KUserId userId : getTopLevelAssignmentIds(topLevelElement)) {
+          final String userIdName = userId.getName();
+          final String userIdNamespace = getExplicitNamespace(userIdName);
+          boolean match = false;
+          if (userIdNamespace == null && !currentNamespace.isEmpty()) {
+            final String fqn = generateFqn(currentNamespace, userIdName);
+            if (matcher.matches(fqn)) {
+              putFqn(userId, fqn);
+              match = true;
+            }
+          } else if (matcher.matches(userIdName)) {
+            match = true;
+          }
+          if (match) {
+            results.add(userId);
+            if (stopAfterFirstMatch) {
+              return results;
+            }
+          }
         }
       }
-    }
+      topLevelElement = topLevelElement.getNextSibling();
+    } while (topLevelElement != null);
     return results;
   }
 
@@ -188,7 +137,7 @@ public final class KUtil {
     }
     final List<KUserId> ids = new ArrayList<>();
     PsiElement currentElement = topLevelElement;
-    while (currentElement instanceof KExpression && currentElement.getFirstChild() instanceof KAssignment) {
+    while(currentElement instanceof KExpression && currentElement.getFirstChild() instanceof KAssignment) {
       final KAssignment assignment = (KAssignment)currentElement.getFirstChild();
       ids.add(assignment.getUserId());
       currentElement = assignment.getExpression();
@@ -196,7 +145,7 @@ public final class KUtil {
     return ids;
   }
 
-  public static Map<String,Set<VirtualFile>> findProjectNamespaces(Project project) {
+  public static Map<String, Set<VirtualFile>> findProjectNamespaces(Project project) {
     final Collection<VirtualFile> virtualFiles = FileTypeIndex.getFiles(KFileType.INSTANCE,
         GlobalSearchScope.allScope(project));
     final Map<String,Set<VirtualFile>> namespaceToVirtualFile = new HashMap<>();
@@ -212,14 +161,16 @@ public final class KUtil {
   }
 
   public static Set<String> findFileNamespaces(Project project, VirtualFile file) {
-    return findGlobalDeclarations(project, file).stream().map(id -> {
-      final String ns = getRootContextName(id.getName());
-      return ns == null ? "" : ns;
-    }).collect(Collectors.toSet());
+    return findIdentifiers(project, file).stream()
+        .map(id -> {
+          final String ns = getExplicitNamespace(id.getName());
+          return ns == null ? "" : ns;
+        })
+        .collect(Collectors.toSet());
   }
 
   @NotNull
-  public static String getDescriptiveName(@NotNull KUserId element) {
+  static String getDescriptiveName(@NotNull KUserId element) {
     final String fqnOrName = KUtil.getFqnOrName(element);
     return getFunctionDefinition(element).map((KLambda lambda) -> {
       final KLambdaParams lambdaParams = lambda.getLambdaParams();
@@ -239,90 +190,49 @@ public final class KUtil {
     return Optional.empty();
   }
 
-  private static boolean isInQFile(PsiElement element) {
-    return isInFileWithExt(element, "q");
-  }
-
-  private static boolean isInFileWithExt(PsiElement element, String extension) {
-    final PsiFile file = element.getContainingFile();
-    return file == null || isFileWithExt(file.getVirtualFile(), extension);
-  }
-
-  static boolean isFileWithExt(VirtualFile file, String extension) {
-    return file == null || extension.equals(file.getExtension());
-  }
-
-  public static boolean isValidIdentifier(PsiElement element) {
-    if (!(element instanceof KUserId)) {
-      return false;
-    }
-    // in k3, the Q built-in functions are valid variable names. In Q, they are not
-    if (KUtil.isInQFile(element)) {
-      PsiElement nameIdentifier = ((KUserId)element).getNameIdentifier();
-      return nameIdentifier != null && KTypes.Q_SYSTEM_FUNCTION != nameIdentifier.getNode().getElementType();
-    }
-    return true;
-  }
-
-  public static String generateFqn(String namespace, String identifier) {
-    if (namespace == null || namespace.isEmpty()) {
+  static String generateFqn(String namespace, String identifier) {
+    if (namespace.isEmpty()) {
       return identifier; // default namespace
+    } else if (".".equals(namespace)) {
+      return "." + identifier; // root namespace
     }
     return namespace + "." + identifier;
   }
 
   @Nullable
-  public static String getNearestContextName(String identifier) {
+  static String getExplicitNamespace(String identifier) {
     return isAbsoluteId(identifier) ? identifier.substring(0, identifier.lastIndexOf('.')) : null;
   }
 
-  @Nullable
-  public static String getRootContextName(String identifier) {
-    if (!isAbsoluteId(identifier) || identifier.length() < 2) {
-      return null;
-    }
-    // ignore first dot
-    int idx = identifier.substring(1).indexOf('.');
-    return idx > 0 ? identifier.substring(0, 1 + idx) : null;
-  }
-
-  public static boolean isAbsoluteId(String identifier) {
+  static boolean isAbsoluteId(String identifier) {
     return identifier.charAt(0) == '.';
   }
 
-  public static boolean isNamespacedId(String identifier) {
-    return isAbsoluteId(identifier) || identifier.indexOf('.') != -1;
-  }
-
   @NotNull
-  public static String getCurrentNamespace(PsiElement element) {
+  static String getCurrentNamespace(KUserId element) {
     final Class[] potentialContainerTypes = new Class[] {KExpression.class, KNamespaceDeclaration.class};
     PsiElement topLevelAssignment = null;
     for (Class containerType : potentialContainerTypes) {
       topLevelAssignment = PsiTreeUtil.getTopmostParentOfType(element, containerType);
-      if (topLevelAssignment != null) {
+      if(topLevelAssignment != null) {
         break;
       }
     }
     if (topLevelAssignment == null) {
       return "";
     }
-    final KNamespaceDeclaration enclosingNsDeclaration = PsiTreeUtil.getPrevSiblingOfType(topLevelAssignment,
-        KNamespaceDeclaration.class);
+    final KNamespaceDeclaration enclosingNsDeclaration = PsiTreeUtil.getPrevSiblingOfType(
+        topLevelAssignment, KNamespaceDeclaration.class);
     if (enclosingNsDeclaration == null) {
       return "";
     }
-    final PsiFile containingFile = element.getContainingFile();
-    if (containingFile == null) {
-      return "";
-    }
     String currentNamespace = ""; // default namespace
+    final PsiFile containingFile = element.getContainingFile();
     PsiElement topLevelElement = containingFile.getFirstChild();
     do {
       if (topLevelElement instanceof KNamespaceDeclaration) {
         final String ns = ((KNamespaceDeclaration)topLevelElement).getUserId().getText();
-        // \d . switches to the root context but non-namespaced declarations go to the default context, not under `.`
-        currentNamespace = ".".equals(ns) ? "" : ns;
+        currentNamespace = getNewNamespace(currentNamespace, ns);
       }
       if (topLevelElement == enclosingNsDeclaration) {
         return currentNamespace;
@@ -330,42 +240,48 @@ public final class KUtil {
       topLevelElement = topLevelElement.getNextSibling();
     } while (topLevelElement != null);
     throw new IllegalStateException(
-        "Cannot calculate current namespace for " + element.getText() + " (" + containingFile.getName() + ")");
+        "Cannot calculate current namespace for " + element.getName() + " (" + containingFile.getName() +
+            ")");
   }
 
-  /**
-   * @deprecated use {@link KUserId#getDetails()} instead
-   */
-  @NotNull
-  @Deprecated
-  public static String getFqnOrName(KNamedElement element) {
-    return element.getDetails().getFqn();
-  }
-
-  private static Optional<PsiElement> findTopLevelMatching(PsiElement element, Predicate<PsiElement> predicate) {
-    for (PsiElement e = element; e != null; e = e.getParent()) {
-      if (e.getParent() instanceof KFile) {
-        return predicate.test(e) ? Optional.of(e) : Optional.empty();
+  private static String getNewNamespace(String currentNamespace, String newNamespace) {
+    if (isAbsoluteId(newNamespace)) {
+      return newNamespace;
+    } else if (currentNamespace.isEmpty()) {
+      if ("^".equals(newNamespace)) {
+        return ""; // can't go up any further
       }
-    }
-    return Optional.empty();
-  }
-
-  public static Optional<PsiElement> getTopLevelFunctionDefinition(PsiElement elem) {
-    return findTopLevelMatching(elem, el -> cast(el, KExpression.class).map(PsiElement::getFirstChild)
-        .flatMap(e -> cast(e, KAssignment.class))
-        .map(PsiElement::getLastChild)
-        .flatMap(e -> cast(e, KExpression.class))
-        .map(PsiElement::getFirstChild)
-        .flatMap(e -> cast(e, KLambda.class))
-        .isPresent());
-  }
-
-  public static <T> Optional<T> cast(Object o, Class<T> clazz) {
-    if (clazz.isInstance(o)) {
-      return Optional.of(clazz.cast(o));
+      // relative ns becomes absolute if we're in the default ns
+      return  "." + newNamespace;
+    } else if ("^".equals(newNamespace)) { // k3: pop up most-nested newNamespace
+      final String newNs = getExplicitNamespace(currentNamespace);
+      return (newNs == null || newNs.isEmpty()) ? "" : newNs;
     } else {
-      return Optional.empty();
+      return currentNamespace + '.' + newNamespace;
     }
   }
+
+  public static void putFqn(KUserId element, String fqn) {
+    putUserData(element, FQN, fqn);
+  }
+
+  @Nullable
+  public static String getFqn(KUserId element) {
+    return getUserData(element, FQN);
+  }
+
+  @NotNull
+  public static String getFqnOrName(KUserId element) {
+    final String fqn = getFqn(element);
+    return fqn != null ? fqn : element.getName();
+  }
+
+  private static <T> void putUserData(PsiElement element, Key<T> key, T data) {
+    element.putUserData(key, data);
+  }
+
+  private static <T> T getUserData(PsiElement element, Key<T> key) {
+    return element.getUserData(key);
+  }
+
 }
