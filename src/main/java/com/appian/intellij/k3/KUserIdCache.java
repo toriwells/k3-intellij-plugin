@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,6 +15,8 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileAdapter;
 import com.intellij.openapi.vfs.VirtualFileEvent;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 
 /**
  * Caches K functions information per file.
@@ -98,6 +101,10 @@ public final class KUserIdCache extends VirtualFileAdapter {
   @Override
   public void fileDeleted(@NotNull VirtualFileEvent event) {
     remove(event.getFile());
+  }
+
+  public void remove(PsiElement target) {
+    remove(Optional.of(target).map(PsiElement::getContainingFile).map(PsiFile::getVirtualFile).orElse(null));
   }
 
   void remove(VirtualFile file) {

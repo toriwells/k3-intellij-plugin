@@ -2,14 +2,19 @@ package com.appian.intellij.k3;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import com.appian.intellij.k3.psi.KAssignment;
 import com.appian.intellij.k3.psi.KLambda;
 import com.appian.intellij.k3.psi.KLambdaParams;
+import com.appian.intellij.k3.psi.KNamedElement;
 import com.appian.intellij.k3.psi.KNamespaceDeclaration;
 import com.appian.intellij.k3.psi.KUserId;
-import com.appian.intellij.k3.psi.impl.KPsiImplUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -90,20 +95,50 @@ public final class KReference extends PsiReferenceBase<PsiElement> implements Ps
     return null;
   }
 
+  public static KUserId findLocalDeclaration(KNamedElement target) {
+    // exit early if an namespaced id is found b/c local assignments are never namespaced/qualified
+    final String text = target.getText();
+    if (KUtil.isNamespacedId(text)) {
+      return null;
+    }
+    final KLambda enclosingLambda = PsiTreeUtil.getContextOfType(target, KLambda.class);
+    // 1) check the enclosing enclosingLambda params
+    return Optional.ofNullable(enclosingLambda)
+        .map(KLambda::getLambdaParams)
+        .map(KLambdaParams::getUserIdList)
+        .orElse(Collections.emptyList())
+        .stream()
+        .filter(id -> text.equals(id.getText()))
+        .findFirst()
+        .orElse(findLocalAssignment(text, enclosingLambda));
+  }
+
+  @Nullable
+  private static KUserId findLocalAssignment(String text, KLambda enclosingLambda) {
+    List<KAssignment> assignmentsInLambdaScope = PsiTreeUtil.findChildrenOfType(enclosingLambda, KAssignment.class)
+        .stream()
+        .filter(id -> text.equals(id.getUserId().getText()))
+        .collect(Collectors.toList());
+    for (KAssignment assignment : assignmentsInLambdaScope) {
+      if (assignment.isSyntacticallyGlobalAmend() || assignment.isComposite()) {
+        continue;
+      }
+      return assignment.getUserId();
+    }
+    return null;
+  }
+
   @Override
   public Object[] getVariants() {
     return new Object[0];
   }
 
   @Override
-  public PsiElement handleElementRename(String newElementName) throws IncorrectOperationException {
-    if (myElement instanceof KUserId) {
-      // inline rename
-      KPsiImplUtil.setName((KUserId)myElement, newElementName);
-      KUserIdCache.getInstance().remove(myElement.getContainingFile().getVirtualFile());
-      return myElement;
-    }
-    // cross-language rename
-    return super.handleElementRename(newElementName);
+  public PsiElement handleElementRename(@NotNull String newName) throws IncorrectOperationException {
+    final KUserId declaration = (KUserId)resolve();
+    final String newEffectiveName = getNewNameForUsage(declaration, myElement, newName);
+    ((KUserId)myElement).setName(newEffectiveName);
+    KUserIdCache.getInstance().remove(myElement);
+    return myElement;
   }
 }
