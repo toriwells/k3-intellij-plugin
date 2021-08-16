@@ -9,8 +9,8 @@ idea-flex.skeleton
 JFlex.jar
 jflex*.jar
 KLexer.java
-q-intellij-plugin.zip
-q-intellij-plugin.jar
+k3-intellij-plugin.zip
+k3-intellij-plugin.jar
 _KLexer.flex
 
 # IntelliJ settings
