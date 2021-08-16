@@ -13,9 +13,6 @@ k3-intellij-plugin.zip
 k3-intellij-plugin.jar
 _KLexer.flex
 
-# IntelliJ settings
-.idea/
-
 # Gradle directories
 build/
 .gradle/
