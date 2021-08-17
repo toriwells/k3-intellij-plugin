@@ -4,15 +4,14 @@ import javax.swing.Icon;
 
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.ui.icons.RowIcon;
-import com.intellij.util.IconUtil;
+import com.intellij.ui.LayeredIcon;
 
 public final class KIcons {
-  public static final Icon FILE = IconLoader.getIcon("q.png");
+  public static final Icon FILE = IconLoader.getIcon("k3.png");
 
-//  public static final Icon PUBLIC_FUNCTION = new RowIcon(AllIcons.Nodes.Function, AllIcons.Nodes.C_public);
-//  public static final Icon PRIVATE_FUNCTION = new RowIcon(AllIcons.Nodes.Function, AllIcons.Nodes.C_private);
-//
-//  public static final Icon PUBLIC_VARIABLE = new RowIcon(AllIcons.Nodes.Variable, AllIcons.Nodes.C_public);
-//  public static final Icon PRIVATE_VARIABLE = new RowIcon(AllIcons.Nodes.Variable, AllIcons.Nodes.C_private);
+  public static final Icon PUBLIC_FUNCTION = new LayeredIcon(AllIcons.Nodes.Function, AllIcons.Nodes.C_public);
+  public static final Icon PRIVATE_FUNCTION = new LayeredIcon(AllIcons.Nodes.Function, AllIcons.Nodes.C_private);
+
+  public static final Icon PUBLIC_VARIABLE = new LayeredIcon(AllIcons.Nodes.Variable, AllIcons.Nodes.C_public);
+  public static final Icon PRIVATE_VARIABLE = new LayeredIcon(AllIcons.Nodes.Variable, AllIcons.Nodes.C_private);
 }

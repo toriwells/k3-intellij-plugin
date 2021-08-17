@@ -63,9 +63,9 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
         public Icon getIcon(boolean unused) {
           if (isDeclaration()) {
             if (KUtil.getFunctionDefinition(KNamedElementImpl.this).isPresent()) {
-              return null; //isInternal() ? KIcons.PRIVATE_FUNCTION : KIcons.PUBLIC_FUNCTION;
+              return isInternal() ? KIcons.PRIVATE_FUNCTION : KIcons.PUBLIC_FUNCTION;
             } else {
-              return null; //isInternal() ? KIcons.PRIVATE_VARIABLE : KIcons.PUBLIC_VARIABLE;
+              return isInternal() ? KIcons.PRIVATE_VARIABLE : KIcons.PUBLIC_VARIABLE;
             }
           }
           return KIcons.FILE;
