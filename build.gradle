@@ -18,16 +18,14 @@ apply plugin: 'org.jetbrains.intellij'
 apply plugin: 'org.jetbrains.grammarkit'
 
 intellij {
+  // see https://www.jetbrains.com/intellij-repository/releases
   version = 'IC-2021.2'
-//}
-// see https://www.jetbrains.com/intellij-repository/releases
-//  version 'IC-2019.2'
   pluginName 'k'
   // see https://github.com/JetBrains/gradle-intellij-plugin/issues/391
   buildSearchableOptions.enabled = false
 }
 
-version '1.28' // Plugin version
+version '1.2' // Plugin version
 patchPluginXml {
   untilBuild '999.*'
 }

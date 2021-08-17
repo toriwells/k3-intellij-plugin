@@ -24,7 +24,6 @@ import com.appian.intellij.k3.psi.KLambdaParams;
 import com.appian.intellij.k3.psi.KModeDirective;
 import com.appian.intellij.k3.psi.KNamedElement;
 import com.appian.intellij.k3.psi.KNamespaceDeclaration;
-import com.appian.intellij.k3.psi.KTypes;
 import com.appian.intellij.k3.psi.KUserId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;

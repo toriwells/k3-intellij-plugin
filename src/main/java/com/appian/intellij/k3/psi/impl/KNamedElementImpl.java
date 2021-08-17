@@ -1,19 +1,25 @@
 package com.appian.intellij.k3.psi.impl;
 
+import javax.swing.Icon;
+
+import org.jetbrains.annotations.NotNull;
+
 import com.appian.intellij.k3.KAstWrapperPsiElement;
 import com.appian.intellij.k3.KIcons;
 import com.appian.intellij.k3.KUserIdCache;
 import com.appian.intellij.k3.KUtil;
-import com.appian.intellij.k3.psi.*;
+import com.appian.intellij.k3.psi.KAssignment;
+import com.appian.intellij.k3.psi.KElementFactory;
+import com.appian.intellij.k3.psi.KLambdaParams;
+import com.appian.intellij.k3.psi.KNamedElement;
+import com.appian.intellij.k3.psi.KNamespaceDeclaration;
+import com.appian.intellij.k3.psi.KUserId;
 import com.intellij.lang.ASTNode;
 import com.intellij.navigation.ItemPresentation;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.annotations.NotNull;
 
-import javax.swing.*;
 public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements KNamedElement {
-  public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements KNamedElement {
     KNamedElementImpl(ASTNode node) {
       super(node);
     }
@@ -57,9 +63,9 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
         public Icon getIcon(boolean unused) {
           if (isDeclaration()) {
             if (KUtil.getFunctionDefinition(KNamedElementImpl.this).isPresent()) {
-              return isInternal() ? KIcons.PRIVATE_FUNCTION : KIcons.PUBLIC_FUNCTION;
+              return null; //isInternal() ? KIcons.PRIVATE_FUNCTION : KIcons.PUBLIC_FUNCTION;
             } else {
-              return isInternal() ? KIcons.PRIVATE_VARIABLE : KIcons.PUBLIC_VARIABLE;
+              return null; //isInternal() ? KIcons.PRIVATE_VARIABLE : KIcons.PUBLIC_VARIABLE;
             }
           }
           return KIcons.FILE;
@@ -82,5 +88,4 @@ public abstract class KNamedElementImpl extends KAstWrapperPsiElement implements
       final String name = getName();
       return name.startsWith("i.") || name.contains(".i.");
     }
-  }
 }
