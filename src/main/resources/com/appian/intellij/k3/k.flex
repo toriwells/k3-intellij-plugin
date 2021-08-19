@@ -85,7 +85,7 @@ CONDITIONAL=":"|"?"|"$"|"@"|"." // ":" is from k3
 <BLOCK_COMMENT_1> {
   ^"/"{NEWLINE}                               { yybegin(YYINITIAL); return COMMENT; }
   {NEWLINE}+                                  { return COMMENT; }
-  .*                                          { return COMMENT; }
+  .+                                          { return COMMENT; }
 }
 
 <COMMAND_STATE> {
