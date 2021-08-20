@@ -8,7 +8,7 @@ buildscript {
 }
 
 plugins {
-  id("java")
+  id "java"
   id "org.jetbrains.intellij" version "0.7.3"
   id "org.jetbrains.grammarkit" version "2021.1.3"
 }

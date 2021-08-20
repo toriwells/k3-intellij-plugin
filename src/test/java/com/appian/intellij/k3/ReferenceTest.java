@@ -1,7 +1,5 @@
 package com.appian.intellij.k3;
 
-import javax.naming.Context;
-
 import org.junit.Test;
 
 import com.appian.intellij.k3.psi.KAssignment;

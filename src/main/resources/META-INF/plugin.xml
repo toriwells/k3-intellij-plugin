@@ -1,4 +1,4 @@
-<idea-plugin version="2">
+<idea-plugin>
   <id>idea.k3</id>
   <name>k3</name>
   <version>1.1</version>
@@ -19,6 +19,10 @@
       </ul>
   ]]></description>
   <change-notes><![CDATA[
+      <strong>1.2</strong><br/>
+      <ul>
+        <li>2021+ Intellij support</li>
+      </ul>
       <strong>1.1</strong><br/>
       <ul>
         <li>Avoids highlighting keys collision with q/k4 plugin</li>
@@ -29,9 +33,8 @@
       </ul>
     ]]>
   </change-notes>
-  <idea-version since-build="131"/>
   <depends>com.intellij.modules.lang</depends>
-<!--  <depends>com.intellij.modules.java</depends>-->
+  <depends>com.intellij.modules.java</depends>
   <project-components>
     <component>
       <implementation-class>com.appian.intellij.k3.KProjectComponent</implementation-class>
@@ -40,7 +43,7 @@
   <extensions defaultExtensionNs="com.intellij">
     <fileTypeFactory implementation="com.appian.intellij.k3.KFileTypeFactory"/>
     <lang.parserDefinition language="k3" implementationClass="com.appian.intellij.k3.KParserDefinition"/>
-    <lang.syntaxHighlighterFactory key="k3" implementationClass="com.appian.intellij.k3.KSyntaxHighlighterFactory"/>
+    <lang.syntaxHighlighterFactory language="k3" implementationClass="com.appian.intellij.k3.KSyntaxHighlighterFactory"/>
     <colorSettingsPage implementation="com.appian.intellij.k3.KColorSettingsPage"/>
     <lang.commenter language="k3" implementationClass="com.appian.intellij.k3.KCommenter"/>
     <lang.braceMatcher language="k3" implementationClass="com.appian.intellij.k3.KPairedBraceMatcherAdapter"/>
